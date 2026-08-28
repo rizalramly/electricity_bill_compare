@@ -92,14 +92,14 @@ export function favorabilityNote(curve: CurvePoint[]): string {
   if (merged.length === 1) {
     return merged[0].newCheaper
       ? "At the current AFA, the new RP4 tariff is cheaper across the whole 0–3,000 kWh range."
-      : "At the current AFA, the old tariff is cheaper across the whole 0–3,000 kWh range.";
+      : "At the current AFA, the old RP3 tariff is cheaper across the whole 0–3,000 kWh range.";
   }
   const parts = merged.map((r) => {
     const range =
       r.to >= (curve[curve.length - 1]?.kwh ?? 3000)
         ? `above ${r.from.toLocaleString()} kWh`
         : `${r.from.toLocaleString()}–${r.to.toLocaleString()} kWh`;
-    return `${range} favors the ${r.newCheaper ? "new RP4" : "old"} tariff`;
+    return `${range} favors the ${r.newCheaper ? "new RP4" : "old RP3"} tariff`;
   });
   return `${parts.join("; ")}.`;
 }

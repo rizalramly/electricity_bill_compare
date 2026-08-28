@@ -1,9 +1,11 @@
 import { useId, useState } from "react";
 import type { AfaResult } from "../lib/afa";
-import { MAX_KWH, type MonthEntry } from "../lib/model";
+import { MAX_BILL_RM, MAX_KWH, type InputMode, type MonthEntry } from "../lib/model";
 import type { TaxToggles } from "../lib/tariff";
 
 interface Props {
+  inputMode: InputMode;
+  onInputModeChange: (mode: InputMode) => void;
   months: MonthEntry[];
   onMonthChange: (index: number, patch: Partial<MonthEntry>) => void;
   afaFetched: AfaResult | null;
@@ -25,15 +27,22 @@ function afaCaption(afaFetched: AfaResult | null): string {
 function MonthField({
   month,
   index,
+  inputMode,
   onChange,
 }: {
   month: MonthEntry;
   index: number;
+  inputMode: InputMode;
   onChange: (patch: Partial<MonthEntry>) => void;
 }) {
   const id = useId();
   const afaId = useId();
-  const usage = month.kwh === "" ? 0 : Number(month.kwh) || 0;
+  const billMode = inputMode === "bill";
+  const raw = billMode ? month.bill : month.kwh;
+  const max = billMode ? MAX_BILL_RM : MAX_KWH;
+  const sliderMax = billMode ? 3000 : MAX_KWH;
+  const value = raw === "" ? 0 : Number(raw) || 0;
+
   return (
     <fieldset className="rounded-xl border border-grid bg-white/60 p-3">
       <input
@@ -45,14 +54,21 @@ function MonthField({
       <div className="flex items-center gap-3">
         <input
           type="range"
-          aria-label={`${month.label || `Month ${index + 1}`} usage slider`}
+          aria-label={`${month.label || `Month ${index + 1}`} ${billMode ? "bill" : "usage"} slider`}
           min={0}
-          max={MAX_KWH}
-          step={5}
-          value={Math.min(usage, MAX_KWH)}
-          onChange={(e) => onChange({ kwh: e.target.value })}
+          max={sliderMax}
+          step={billMode ? 1 : 5}
+          value={Math.min(value, sliderMax)}
+          onChange={(e) =>
+            onChange(billMode ? { bill: e.target.value } : { kwh: e.target.value })
+          }
         />
         <div className="flex items-center gap-1.5">
+          {billMode && (
+            <label htmlFor={id} className="text-xs text-ink-muted">
+              RM
+            </label>
+          )}
           <input
             id={id}
             type="number"
@@ -60,18 +76,24 @@ function MonthField({
             className="input-field w-24 text-right tabular-nums"
             placeholder="—"
             min={0}
-            max={MAX_KWH}
-            value={month.kwh}
-            onChange={(e) => onChange({ kwh: e.target.value })}
+            max={max}
+            step={billMode ? 0.01 : 1}
+            value={raw}
+            onChange={(e) =>
+              onChange(billMode ? { bill: e.target.value } : { kwh: e.target.value })
+            }
           />
-          <label htmlFor={id} className="text-xs text-ink-muted">
-            kWh
-          </label>
+          {!billMode && (
+            <label htmlFor={id} className="text-xs text-ink-muted">
+              kWh
+            </label>
+          )}
         </div>
       </div>
-      {month.kwh !== "" && (Number(month.kwh) < 0 || Number(month.kwh) > MAX_KWH) && (
+      {raw !== "" && (Number(raw) < 0 || Number(raw) > max) && (
         <p role="alert" className="mt-1 text-xs text-status-bad">
-          Enter a value between 0 and 10,000 kWh (clamped for calculation).
+          Enter a value between 0 and {max.toLocaleString()}{" "}
+          {billMode ? "RM" : "kWh"} (clamped for calculation).
         </p>
       )}
       <div className="mt-2 flex items-center gap-2">
@@ -96,6 +118,8 @@ function MonthField({
 }
 
 export function InputsPanel({
+  inputMode,
+  onInputModeChange,
   months,
   onMonthChange,
   afaFetched,
@@ -113,15 +137,48 @@ export function InputsPanel({
     <section aria-labelledby="inputs-heading" className="card p-5">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 id="inputs-heading" className="text-base font-bold">
-          Your usage
+          Your bills
         </h2>
         <button type="button" className="btn-secondary" onClick={onFillSample}>
           Sample data
         </button>
       </div>
 
+      <div
+        role="group"
+        aria-label="Input mode"
+        className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-surface-page p-1 ring-1 ring-grid"
+      >
+        <button
+          type="button"
+          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+            inputMode === "bill"
+              ? "bg-white text-ink shadow-sm ring-1 ring-grid"
+              : "text-ink-secondary hover:text-ink"
+          }`}
+          aria-pressed={inputMode === "bill"}
+          onClick={() => onInputModeChange("bill")}
+        >
+          Bill amount (RM)
+        </button>
+        <button
+          type="button"
+          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+            inputMode === "kwh"
+              ? "bg-white text-ink shadow-sm ring-1 ring-grid"
+              : "text-ink-secondary hover:text-ink"
+          }`}
+          aria-pressed={inputMode === "kwh"}
+          onClick={() => onInputModeChange("kwh")}
+        >
+          Usage (kWh)
+        </button>
+      </div>
+
       <p className="mb-3 text-xs text-ink-secondary">
-        Enter total monthly usage for up to 3 months (labels are editable).
+        {inputMode === "bill"
+          ? "Key in your actual monthly bill total (RP4, as billed — including AFA and taxes) for up to 3 months. Usage is estimated automatically."
+          : "Enter total monthly usage for up to 3 months (labels are editable)."}
       </p>
       <div className="flex flex-col gap-3">
         {months.map((month, index) => (
@@ -129,6 +186,7 @@ export function InputsPanel({
             key={index}
             month={month}
             index={index}
+            inputMode={inputMode}
             onChange={(patch) => onMonthChange(index, patch)}
           />
         ))}
@@ -148,8 +206,8 @@ export function InputsPanel({
         </div>
         <p className="mt-1 text-xs text-ink-muted">{afaCaption(afaFetched)}</p>
         <p className="mt-1 text-xs text-ink-secondary">
-          AFA is gazetted monthly — set it per month above. Negative = rebate.
-          Exempt when usage ≤ 600 kWh.
+          AFA is gazetted monthly — set it per month above (it affects the usage
+          estimated from your bill). Negative = rebate. Exempt when usage ≤ 600 kWh.
         </p>
       </div>
 
@@ -169,7 +227,7 @@ export function InputsPanel({
           <div className="mt-3 flex flex-col gap-4">
             <div>
               <label htmlFor={icptId} className="text-sm font-medium">
-                ICPT for old tariff
+                ICPT for old RP3 tariff
               </label>
               <div className="mt-1.5 flex items-center gap-2">
                 <input
@@ -186,7 +244,7 @@ export function InputsPanel({
                 <span className="text-xs text-ink-muted">sen/kWh</span>
               </div>
               <p className="mt-1 text-xs text-ink-muted">
-                Default 0 — the old side is a base-tariff figure unless set.
+                Default 0 — the RP3 side is a base-tariff figure unless set.
               </p>
             </div>
 

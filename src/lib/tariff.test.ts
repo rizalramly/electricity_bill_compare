@@ -5,6 +5,7 @@ import {
   eeiRebateSen,
   kwtbbCharge,
   sstCharge,
+  usageFromNewBill,
   OLD_MINIMUM_CHARGE_RM,
   RP4,
 } from "./tariff";
@@ -170,6 +171,31 @@ describe("worked example from the spec", () => {
     expect(bill.afaAmount).toBeCloseTo(34.2, 2);
     expect(bill.eeiRebate).toBeCloseTo(9.0, 2);
     expect(bill.subtotal).toBeCloseTo(435.07, 2);
+  });
+});
+
+describe("usageFromNewBill (RP4 bill → estimated usage)", () => {
+  it.each([150, 380, 599, 601, 900, 1499, 1501, 2500])(
+    "round-trips usage %d kWh through the bill total",
+    (usage) => {
+      const bill = calcNewTariff(usage, 3.8, ALL_TAXES).total;
+      expect(usageFromNewBill(bill, 3.8, ALL_TAXES)).toBeCloseTo(usage, 0);
+    },
+  );
+
+  it("round-trips with a negative AFA and taxes off", () => {
+    const bill = calcNewTariff(800, -1.1, NO_TAXES).total;
+    expect(usageFromNewBill(bill, -1.1, NO_TAXES)).toBeCloseTo(800, 0);
+  });
+
+  it("returns 0 for zero or invalid bills", () => {
+    expect(usageFromNewBill(0, 3.8)).toBe(0);
+    expect(usageFromNewBill(-5, 3.8)).toBe(0);
+    expect(usageFromNewBill(NaN, 3.8)).toBe(0);
+  });
+
+  it("clamps to the maximum when the bill exceeds the range", () => {
+    expect(usageFromNewBill(1_000_000, 3.8)).toBe(10000);
   });
 });
 

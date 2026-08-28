@@ -7,16 +7,31 @@ import { SummaryPanel } from "./components/SummaryPanel";
 import { DataTable } from "./components/DataTable";
 import { fetchAfa, type AfaResult, DEFAULT_AFA } from "./lib/afa";
 import { buildCurve, findBreakevens } from "./lib/curve";
-import { clamp, parseUsage, type MonthEntry, type MonthResult } from "./lib/model";
-import { calcNewTariff, calcOldTariff, type TaxToggles } from "./lib/tariff";
+import {
+  clamp,
+  parseBill,
+  parseUsage,
+  type InputMode,
+  type MonthEntry,
+  type MonthResult,
+} from "./lib/model";
+import {
+  calcNewTariff,
+  calcOldTariff,
+  usageFromNewBill,
+  type TaxToggles,
+} from "./lib/tariff";
 
+// Sample data: ~380 / 520 / 745 kWh at AFA +3.80 sen, as usage and as RP4 bills.
 const SAMPLE_KWH = ["380", "520", "745"];
+const SAMPLE_BILL = ["105.90", "179.26", "368.02"];
 
 export default function App() {
+  const [inputMode, setInputMode] = useState<InputMode>("bill");
   const [months, setMonths] = useState<MonthEntry[]>([
-    { label: "Month 1", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
-    { label: "Month 2", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
-    { label: "Month 3", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 1", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 2", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 3", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
   ]);
   const [afaFetched, setAfaFetched] = useState<AfaResult | null>(null);
   const [icptInput, setIcptInput] = useState("0");
@@ -40,26 +55,44 @@ export default function App() {
 
   const results: MonthResult[] = useMemo(() => {
     return months.flatMap((month, index) => {
-      const usage = parseUsage(month.kwh);
-      if (usage === null) return [];
       const afaSen = clamp(Number(month.afa) || 0, -10, 10);
+
+      let usage: number;
+      let usageEstimated: boolean;
+      let newTotalRM: number;
+      if (inputMode === "bill") {
+        const billRM = parseBill(month.bill);
+        if (billRM === null) return [];
+        usage = usageFromNewBill(billRM, afaSen, taxes);
+        usageEstimated = true;
+        newTotalRM = billRM;
+      } else {
+        const parsed = parseUsage(month.kwh);
+        if (parsed === null) return [];
+        usage = parsed;
+        usageEstimated = false;
+        newTotalRM = calcNewTariff(usage, afaSen, taxes).total;
+      }
+
       const oldBill = calcOldTariff(usage, icptSen, taxes);
       const newBill = calcNewTariff(usage, afaSen, taxes);
-      const diff = newBill.total - oldBill.total;
+      const diff = newTotalRM - oldBill.total;
       return [
         {
           index,
           label: month.label || `Month ${index + 1}`,
           usage,
+          usageEstimated,
           afaSen,
           oldBill,
           newBill,
+          newTotalRM,
           diff,
           pct: oldBill.total > 0 ? (diff / oldBill.total) * 100 : 0,
         },
       ];
     });
-  }, [months, icptSen, taxes]);
+  }, [months, inputMode, icptSen, taxes]);
 
   // The cost curve needs a single AFA: use the first entered month's value,
   // falling back to the fetched/default AFA when no month is entered yet.
@@ -79,7 +112,13 @@ export default function App() {
     setMonths((prev) => prev.map((m, i) => (i === index ? { ...m, ...patch } : m)));
 
   const fillSample = () =>
-    setMonths((prev) => prev.map((m, i) => ({ ...m, kwh: SAMPLE_KWH[i] ?? "" })));
+    setMonths((prev) =>
+      prev.map((m, i) => ({
+        ...m,
+        kwh: SAMPLE_KWH[i] ?? "",
+        bill: SAMPLE_BILL[i] ?? "",
+      })),
+    );
 
   const resetAfa = () => {
     const value = (afaFetched?.value ?? DEFAULT_AFA).toFixed(2);
@@ -99,16 +138,19 @@ export default function App() {
           </span>
         </div>
         <p className="mt-2 max-w-3xl text-sm text-ink-secondary">
-          Compare your monthly bill under the <strong>old domestic tariff</strong>{" "}
-          (pre-July 2025 tiered blocks) vs the <strong>new RP4 tariff</strong> —
-          including the monthly AFA fuel adjustment, EEI rebate, and taxes. For
-          domestic users in Peninsular Malaysia.
+          Key in your actual monthly TNB bill (billed under the new{" "}
+          <strong>RP4</strong> tariff) — the calculator estimates your usage and
+          shows what the same month would have cost under the{" "}
+          <strong>old RP3 domestic tariff</strong> (pre-July 2025 tiered blocks).
+          For domestic users in Peninsular Malaysia.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <InputsPanel
+            inputMode={inputMode}
+            onInputModeChange={setInputMode}
             months={months}
             onMonthChange={updateMonth}
             afaFetched={afaFetched}
@@ -126,8 +168,9 @@ export default function App() {
             <div className="card flex h-full min-h-[200px] flex-col items-center justify-center gap-3 p-8 text-center">
               <p className="text-lg font-semibold">No months entered yet</p>
               <p className="max-w-sm text-sm text-ink-secondary">
-                Enter your monthly usage on the left (1–3 months), or load the
-                sample data to see the comparison instantly.
+                {inputMode === "bill"
+                  ? "Key in your monthly bill amount on the left (1–3 months), or load the sample data to see the comparison instantly."
+                  : "Enter your monthly usage on the left (1–3 months), or load the sample data to see the comparison instantly."}
               </p>
               <button type="button" className="btn-secondary" onClick={fillSample}>
                 Load sample data
@@ -171,8 +214,9 @@ export default function App() {
 
       <footer className="mt-10 border-t border-grid pt-4 text-xs text-ink-muted">
         <p>
-          Old tariff shown at base rate (ICPT = 0 unless set). New tariff includes
-          AFA as entered. Rates: RP4, effective 1 July 2025. Verify with{" "}
+          Old RP3 tariff shown at base rate (ICPT = 0 unless set). New RP4 tariff
+          includes AFA as entered; usage estimated from bills is approximate.
+          Rates: RP4, effective 1 July 2025. Verify with{" "}
           <a
             className="underline hover:text-ink"
             href="https://www.mytnb.com.my/tariff/index.html"

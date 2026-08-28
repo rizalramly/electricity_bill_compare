@@ -35,7 +35,10 @@ export function MonthCard({ result }: { result: MonthResult }) {
         <div>
           <h3 className="text-sm font-bold">{result.label}</h3>
           <p className="text-xs text-ink-muted">
-            {formatKwh(result.usage)} · AFA {formatSigned(result.afaSen)} sen
+            {result.usageEstimated ? "≈ " : ""}
+            {formatKwh(result.usage)}
+            {result.usageEstimated ? " (est. from bill)" : ""} · AFA{" "}
+            {formatSigned(result.afaSen)} sen
           </p>
         </div>
         <span
@@ -55,7 +58,7 @@ export function MonthCard({ result }: { result: MonthResult }) {
         <div>
           <dt className="flex items-center gap-1.5 text-xs text-ink-muted">
             <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm bg-series-old" />
-            Old tariff
+            Old (RP3)
           </dt>
           <dd className="font-semibold tabular-nums">{formatRM(oldBill.total)}</dd>
         </div>
@@ -64,7 +67,7 @@ export function MonthCard({ result }: { result: MonthResult }) {
             <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm bg-series-new" />
             New (RP4)
           </dt>
-          <dd className="font-semibold tabular-nums">{formatRM(newBill.total)}</dd>
+          <dd className="font-semibold tabular-nums">{formatRM(result.newTotalRM)}</dd>
         </div>
       </dl>
 
@@ -85,7 +88,7 @@ export function MonthCard({ result }: { result: MonthResult }) {
           <div>
             <h4 className="mb-1 flex items-center gap-1.5 font-semibold">
               <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm bg-series-old" />
-              Old tariff
+              Old tariff (RP3)
             </h4>
             {oldBill.blocks.map((block) => (
               <Line
@@ -151,7 +154,18 @@ export function MonthCard({ result }: { result: MonthResult }) {
             )}
             {newBill.sst > 0 && <Line label="SST 8%" amount={formatRM(newBill.sst)} />}
             <div className="mt-1 border-t border-grid pt-1">
-              <Line label="Total" amount={formatRM(newBill.total)} />
+              <Line
+                label={result.usageEstimated ? "Total (computed)" : "Total"}
+                amount={formatRM(newBill.total)}
+              />
+              {result.usageEstimated &&
+                Math.abs(newBill.total - result.newTotalRM) > 0.01 && (
+                  <Line
+                    label="Your entered bill"
+                    amount={formatRM(result.newTotalRM)}
+                    muted
+                  />
+                )}
             </div>
           </div>
         </div>

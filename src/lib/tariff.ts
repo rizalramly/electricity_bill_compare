@@ -206,6 +206,35 @@ export function calcOldTariff(
 }
 
 /**
+ * Invert an RP4 bill: estimate the monthly usage (kWh) that produces the given
+ * total bill (RM, including AFA, EEI and enabled taxes).
+ *
+ * The RP4 total is piecewise-linear in usage with upward jumps at the EEI tier
+ * edges and (for non-negative AFA) at 600 kWh, so bisection converges to the
+ * usage whose computed total is nearest the entered bill. A strongly negative
+ * AFA can make the 600 kWh step non-monotonic; the estimate then lands on one
+ * of the candidate usages, which is acceptable for an estimator.
+ */
+export function usageFromNewBill(
+  totalRM: number,
+  afaSen = 0,
+  taxes: TaxToggles = DEFAULT_TAXES,
+  maxKwh = 10000,
+): number {
+  if (!Number.isFinite(totalRM) || totalRM <= 0) return 0;
+  const billAt = (usage: number) => calcNewTariff(usage, afaSen, taxes).total;
+  if (billAt(maxKwh) <= totalRM) return maxKwh;
+  let lo = 0;
+  let hi = maxKwh;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (billAt(mid) < totalRM) lo = mid;
+    else hi = mid;
+  }
+  return Math.round((lo + hi) / 2);
+}
+
+/**
  * New tariff bill (RP4 Domestic, effective 1 July 2025).
  * @param usageKwh monthly usage in kWh
  * @param afaSen AFA in sen/kWh (may be negative = rebate); exempt when usage ≤ 600 kWh

@@ -11,7 +11,8 @@ export function SummaryPanel({
 }) {
   const totalKwh = results.reduce((sum, r) => sum + r.usage, 0);
   const totalOld = results.reduce((sum, r) => sum + r.oldBill.total, 0);
-  const totalNew = results.reduce((sum, r) => sum + r.newBill.total, 0);
+  const totalNew = results.reduce((sum, r) => sum + r.newTotalRM, 0);
+  const anyEstimated = results.some((r) => r.usageEstimated);
   const diff = totalNew - totalOld;
   const pct = totalOld > 0 ? (diff / totalOld) * 100 : 0;
   const saves = diff < 0;
@@ -31,13 +32,14 @@ export function SummaryPanel({
         Summary
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-        Across your {monthWord} ({formatKwh(totalKwh)} total) {afaText}, the
-        new RP4 tariff costs{" "}
+        Across your {monthWord} ({anyEstimated ? "≈" : ""}
+        {formatKwh(totalKwh)} total{anyEstimated ? ", estimated from your bills" : ""}){" "}
+        {afaText}, the new RP4 tariff costs{" "}
         <strong className={saves ? "text-status-good" : "text-status-bad"}>
           {formatRM(Math.abs(diff))} {saves ? "less" : "more"} (
           {formatSigned(pct, 1)}%)
         </strong>{" "}
-        than the old tariff — {formatRM(totalNew)} vs {formatRM(totalOld)}.
+        than the old RP3 tariff — {formatRM(totalNew)} vs {formatRM(totalOld)}.
       </p>
       <p className="mt-2 text-xs text-ink-muted">{favorabilityNote(curve)}</p>
     </section>

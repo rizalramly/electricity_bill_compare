@@ -37,7 +37,7 @@ function CurveTooltip({
     <div className="rounded-lg border border-grid bg-surface p-3 text-xs shadow-lg">
       <p className="mb-1 font-bold">{Number(label).toLocaleString()} kWh</p>
       <div className="flex justify-between gap-6">
-        <span style={{ color: OLD_COLOR }}>Old tariff</span>
+        <span style={{ color: OLD_COLOR }}>Old (RP3)</span>
         <span className="tabular-nums">{formatRM(point.oldRM)}</span>
       </div>
       <div className="flex justify-between gap-6">
@@ -143,7 +143,7 @@ export function CostCurveChart({
             <Line
               type="linear"
               dataKey="oldRM"
-              name="Old tariff"
+              name="Old tariff (RP3)"
               stroke={OLD_COLOR}
               strokeWidth={2}
               dot={false}
@@ -194,7 +194,7 @@ export function CostCurveChart({
                 <ReferenceDot
                   key={`m-${result.index}-new`}
                   x={result.usage}
-                  y={result.newBill.total}
+                  y={result.newTotalRM}
                   r={5}
                   fill={NEW_COLOR}
                   stroke="#fcfcfb"

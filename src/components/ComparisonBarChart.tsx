@@ -44,14 +44,14 @@ function BreakdownTooltip({
         {result.label} · {formatKwh(result.usage)}
       </p>
       <p className="mb-0.5 font-semibold" style={{ color: OLD_COLOR }}>
-        Old tariff — {formatRM(oldBill.total)}
+        Old RP3 — {formatRM(oldBill.total)}
       </p>
       {row("Energy (blocks)", oldBill.energyCharge)}
       {oldBill.icptAmount !== 0 && row(`ICPT ${formatSigned(oldBill.icptSen)} sen`, oldBill.icptAmount)}
       {oldBill.kwtbb > 0 && row("KWTBB 1.6%", oldBill.kwtbb)}
       {oldBill.sst > 0 && row("SST 8%", oldBill.sst)}
       <p className="mb-0.5 mt-2 font-semibold" style={{ color: NEW_COLOR }}>
-        New RP4 — {formatRM(newBill.total)}
+        New RP4 — {formatRM(result.newTotalRM)}
       </p>
       {row(`Energy ${newBill.energyRateSen} sen`, newBill.energyCharge)}
       {row("Capacity 4.55 sen", newBill.capacityCharge)}
@@ -77,7 +77,7 @@ export function ComparisonBarChart({ results }: { results: MonthResult[] }) {
   const data: BarDatum[] = results.map((result) => ({
     name: result.label,
     Old: result.oldBill.total,
-    New: result.newBill.total,
+    New: result.newTotalRM,
     result,
   }));
 
@@ -117,7 +117,7 @@ export function ComparisonBarChart({ results }: { results: MonthResult[] }) {
             />
             <Bar
               dataKey="Old"
-              name="Old tariff"
+              name="Old tariff (RP3)"
               fill={OLD_COLOR}
               radius={[4, 4, 0, 0]}
               hide={hidden.Old}
