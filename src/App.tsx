@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FeedbackPanel } from "./components/FeedbackPanel";
 import { InputsPanel } from "./components/InputsPanel";
 import { MonthCard } from "./components/MonthCard";
 import { ComparisonBarChart } from "./components/ComparisonBarChart";
@@ -20,7 +21,10 @@ import { calcOldTariff, type TaxToggles } from "./lib/tariff";
 const SAMPLE_KWH = ["380", "520", "745"];
 const SAMPLE_BILL = ["105.90", "179.26", "368.02"];
 
+type Tab = "calculator" | "feedback";
+
 export default function App() {
+  const [tab, setTab] = useState<Tab>("calculator");
   const [months, setMonths] = useState<MonthEntry[]>([
     { label: "Month 1", bill: "", kwh: "" },
     { label: "Month 2", bill: "", kwh: "" },
@@ -105,8 +109,49 @@ export default function App() {
           <strong>old RP3 domestic tariff</strong> (pre-July 2025 tiered blocks).
           For domestic users in Peninsular Malaysia.
         </p>
+        <p className="mt-3 max-w-3xl rounded-lg border border-series-new/30 bg-series-new/5 px-3 py-2 text-xs text-ink-secondary">
+          <strong>* Simulation only.</strong> The RP3 amounts are computed
+          estimates and may contain errors, as only limited public information
+          about the old tariff is available. If you have complete bill details,
+          please share them via the{" "}
+          <button
+            type="button"
+            className="font-semibold text-series-old underline hover:opacity-80"
+            onClick={() => setTab("feedback")}
+          >
+            Feedback
+          </button>{" "}
+          tab.
+        </p>
+
+        <nav aria-label="Sections" className="mt-5 flex gap-1 border-b border-grid">
+          {(
+            [
+              ["calculator", "Calculator"],
+              ["feedback", "Feedback"],
+            ] as [Tab, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-current={tab === key ? "page" : undefined}
+              className={`-mb-px rounded-t-lg border-x border-t px-4 py-2 text-sm font-semibold transition ${
+                tab === key
+                  ? "border-grid bg-surface text-ink"
+                  : "border-transparent text-ink-secondary hover:text-ink"
+              }`}
+              onClick={() => setTab(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
+      {tab === "feedback" && <FeedbackPanel />}
+
+      {tab === "calculator" && (
+      <>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <InputsPanel
@@ -168,6 +213,8 @@ export default function App() {
           {showTable && <DataTable results={results} curve={curve} />}
         </div>
       </div>
+      </>
+      )}
 
       <footer className="mt-10 border-t border-grid pt-4 text-xs text-ink-muted">
         <p>

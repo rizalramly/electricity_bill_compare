@@ -47,6 +47,18 @@ npm run preview    # serve the production build locally
 4. The `api/` folder is auto-detected as serverless functions alongside the Vite app — no `vercel.json` needed.
 5. No environment variables or secrets are required.
 
+## Feedback form (email delivery)
+
+The **Feedback** tab posts to the serverless route [`api/feedback.ts`](api/feedback.ts) (multipart form, optional attachment up to 4 MB — Vercel's request-body cap is 4.5 MB). Delivery uses [Resend](https://resend.com); the recipient address lives only server-side (env var / encoded constant) and is never shipped to the browser.
+
+One-time setup:
+
+1. Create a free Resend account (sign up with the address that should receive the feedback) and create an API key.
+2. In the Vercel project: Settings → Environment Variables → add `RESEND_API_KEY` (all environments). Optionally add `FEEDBACK_TO_EMAIL` to override the recipient.
+3. Redeploy. Until the key is set, the form shows a friendly "not configured yet" notice instead of sending.
+
+Note: with Resend's sandbox sender (`onboarding@resend.dev`), emails can only be delivered to the Resend account owner's own address — fine for this use. Verify a custom domain in Resend to lift that restriction.
+
 ## AFA auto-fetch and the monthly fallback
 
 `api/afa.ts` tries to scrape the current AFA (sen/kWh) from the official myTNB tariff page server-side, with realistic browser headers and a 5-second timeout. That page sits behind bot detection and may render the value via JavaScript, so **any** failure (blocked, timeout, parse miss) returns a fallback payload:
