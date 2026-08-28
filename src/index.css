@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-page text-ink font-sans antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-surface shadow-sm ring-1 ring-black/10;
+  }
+  .input-field {
+    @apply w-full rounded-lg border border-grid bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-series-old focus:outline-none focus:ring-2 focus:ring-series-old/30;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-grid bg-white px-3 py-1.5 text-sm font-medium text-ink-secondary shadow-sm transition hover:bg-surface-page hover:text-ink focus:outline-none focus:ring-2 focus:ring-series-old/30;
+  }
+}
+
+/* Range slider styling (WebKit + Firefox) */
+input[type="range"] {
+  @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-grid;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  @apply h-4 w-4 rounded-full border-2 border-white bg-series-old shadow;
+}
+input[type="range"]::-moz-range-thumb {
+  @apply h-4 w-4 rounded-full border-2 border-white bg-series-old shadow;
+}
