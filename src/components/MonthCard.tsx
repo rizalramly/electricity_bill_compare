@@ -34,7 +34,9 @@ export function MonthCard({ result }: { result: MonthResult }) {
       <header className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold">{result.label}</h3>
-          <p className="text-xs text-ink-muted">{formatKwh(result.usage)}</p>
+          <p className="text-xs text-ink-muted">
+            {formatKwh(result.usage)} · AFA {formatSigned(result.afaSen)} sen
+          </p>
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${

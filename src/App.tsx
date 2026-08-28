@@ -14,11 +14,10 @@ const SAMPLE_KWH = ["380", "520", "745"];
 
 export default function App() {
   const [months, setMonths] = useState<MonthEntry[]>([
-    { label: "Month 1", kwh: "" },
-    { label: "Month 2", kwh: "" },
-    { label: "Month 3", kwh: "" },
+    { label: "Month 1", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 2", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 3", kwh: "", afa: DEFAULT_AFA.toFixed(2) },
   ]);
-  const [afaInput, setAfaInput] = useState(DEFAULT_AFA.toFixed(2));
   const [afaFetched, setAfaFetched] = useState<AfaResult | null>(null);
   const [icptInput, setIcptInput] = useState("0");
   const [taxes, setTaxes] = useState<TaxToggles>({ kwtbb: true, sst: true });
@@ -29,20 +28,21 @@ export default function App() {
     fetchAfa().then((result) => {
       if (!alive) return;
       setAfaFetched(result);
-      setAfaInput(result.value.toFixed(2));
+      // Prefill every month's AFA with the fetched value (all still editable).
+      setMonths((prev) => prev.map((m) => ({ ...m, afa: result.value.toFixed(2) })));
     });
     return () => {
       alive = false;
     };
   }, []);
 
-  const afaSen = clamp(Number(afaInput) || 0, -10, 10);
   const icptSen = clamp(Number(icptInput) || 0, -10, 10);
 
   const results: MonthResult[] = useMemo(() => {
     return months.flatMap((month, index) => {
       const usage = parseUsage(month.kwh);
       if (usage === null) return [];
+      const afaSen = clamp(Number(month.afa) || 0, -10, 10);
       const oldBill = calcOldTariff(usage, icptSen, taxes);
       const newBill = calcNewTariff(usage, afaSen, taxes);
       const diff = newBill.total - oldBill.total;
@@ -51,6 +51,7 @@ export default function App() {
           index,
           label: month.label || `Month ${index + 1}`,
           usage,
+          afaSen,
           oldBill,
           newBill,
           diff,
@@ -58,11 +59,19 @@ export default function App() {
         },
       ];
     });
-  }, [months, afaSen, icptSen, taxes]);
+  }, [months, icptSen, taxes]);
+
+  // The cost curve needs a single AFA: use the first entered month's value,
+  // falling back to the fetched/default AFA when no month is entered yet.
+  const curveAfaSen =
+    results.length > 0
+      ? results[0].afaSen
+      : clamp(afaFetched?.value ?? DEFAULT_AFA, -10, 10);
+  const curveAfaLabel = results.length > 0 ? results[0].label : null;
 
   const curve = useMemo(
-    () => buildCurve(afaSen, icptSen, taxes),
-    [afaSen, icptSen, taxes],
+    () => buildCurve(curveAfaSen, icptSen, taxes),
+    [curveAfaSen, icptSen, taxes],
   );
   const breakevens = useMemo(() => findBreakevens(curve), [curve]);
 
@@ -73,8 +82,8 @@ export default function App() {
     setMonths((prev) => prev.map((m, i) => ({ ...m, kwh: SAMPLE_KWH[i] ?? "" })));
 
   const resetAfa = () => {
-    if (afaFetched) setAfaInput(afaFetched.value.toFixed(2));
-    else setAfaInput(DEFAULT_AFA.toFixed(2));
+    const value = (afaFetched?.value ?? DEFAULT_AFA).toFixed(2);
+    setMonths((prev) => prev.map((m) => ({ ...m, afa: value })));
   };
 
   return (
@@ -102,8 +111,6 @@ export default function App() {
           <InputsPanel
             months={months}
             onMonthChange={updateMonth}
-            afaInput={afaInput}
-            onAfaChange={setAfaInput}
             afaFetched={afaFetched}
             onAfaReset={resetAfa}
             icptInput={icptInput}
@@ -134,13 +141,19 @@ export default function App() {
             </div>
           )}
 
-          {results.length > 0 && <SummaryPanel results={results} afaSen={afaSen} curve={curve} />}
+          {results.length > 0 && <SummaryPanel results={results} curve={curve} />}
         </div>
       </div>
 
       <div className="mt-6 flex flex-col gap-6">
         {results.length > 0 && <ComparisonBarChart results={results} />}
-        <CostCurveChart curve={curve} breakevens={breakevens} results={results} afaSen={afaSen} />
+        <CostCurveChart
+          curve={curve}
+          breakevens={breakevens}
+          results={results}
+          afaSen={curveAfaSen}
+          afaSourceLabel={curveAfaLabel}
+        />
 
         <div>
           <button

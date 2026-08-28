@@ -6,8 +6,6 @@ import type { TaxToggles } from "../lib/tariff";
 interface Props {
   months: MonthEntry[];
   onMonthChange: (index: number, patch: Partial<MonthEntry>) => void;
-  afaInput: string;
-  onAfaChange: (value: string) => void;
   afaFetched: AfaResult | null;
   onAfaReset: () => void;
   icptInput: string;
@@ -34,6 +32,7 @@ function MonthField({
   onChange: (patch: Partial<MonthEntry>) => void;
 }) {
   const id = useId();
+  const afaId = useId();
   const usage = month.kwh === "" ? 0 : Number(month.kwh) || 0;
   return (
     <fieldset className="rounded-xl border border-grid bg-white/60 p-3">
@@ -75,6 +74,23 @@ function MonthField({
           Enter a value between 0 and 10,000 kWh (clamped for calculation).
         </p>
       )}
+      <div className="mt-2 flex items-center gap-2">
+        <label htmlFor={afaId} className="text-xs font-medium text-ink-secondary">
+          AFA
+        </label>
+        <input
+          id={afaId}
+          type="number"
+          inputMode="decimal"
+          className="input-field w-24 text-right tabular-nums"
+          min={-10}
+          max={10}
+          step={0.01}
+          value={month.afa}
+          onChange={(e) => onChange({ afa: e.target.value })}
+        />
+        <span className="text-xs text-ink-muted">sen/kWh</span>
+      </div>
     </fieldset>
   );
 }
@@ -82,8 +98,6 @@ function MonthField({
 export function InputsPanel({
   months,
   onMonthChange,
-  afaInput,
-  onAfaChange,
   afaFetched,
   onAfaReset,
   icptInput,
@@ -93,7 +107,6 @@ export function InputsPanel({
   onFillSample,
 }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const afaId = useId();
   const icptId = useId();
 
   return (
@@ -122,34 +135,21 @@ export function InputsPanel({
       </div>
 
       <div className="mt-5 border-t border-grid pt-4">
-        <label htmlFor={afaId} className="text-sm font-semibold">
-          AFA — Automatic Fuel Adjustment
-        </label>
-        <div className="mt-1.5 flex items-center gap-2">
-          <input
-            id={afaId}
-            type="number"
-            inputMode="decimal"
-            className="input-field w-28 text-right tabular-nums"
-            min={-10}
-            max={10}
-            step={0.01}
-            value={afaInput}
-            onChange={(e) => onAfaChange(e.target.value)}
-          />
-          <span className="text-xs text-ink-muted">sen/kWh</span>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">AFA — Automatic Fuel Adjustment</h3>
           <button
             type="button"
-            className="btn-secondary ml-auto"
+            className="btn-secondary"
             onClick={onAfaReset}
-            title="Reset to fetched value"
+            title="Reset every month's AFA to the fetched value"
           >
-            ↺ Reset
+            ↺ Reset all
           </button>
         </div>
         <p className="mt-1 text-xs text-ink-muted">{afaCaption(afaFetched)}</p>
         <p className="mt-1 text-xs text-ink-secondary">
-          Applied to all months. Negative = rebate. Exempt when usage ≤ 600 kWh.
+          AFA is gazetted monthly — set it per month above. Negative = rebate.
+          Exempt when usage ≤ 600 kWh.
         </p>
       </div>
 

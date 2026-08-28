@@ -4,12 +4,16 @@ export interface MonthEntry {
   label: string;
   /** Raw input string; empty = month not entered. */
   kwh: string;
+  /** Per-month AFA in sen/kWh (raw input string) — AFA is gazetted monthly. */
+  afa: string;
 }
 
 export interface MonthResult {
   index: number;
   label: string;
   usage: number;
+  /** AFA used for this month (sen/kWh). */
+  afaSen: number;
   oldBill: OldBillBreakdown;
   newBill: NewBillBreakdown;
   /** new − old (negative = new tariff is cheaper). */
