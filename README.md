@@ -5,7 +5,7 @@ A single-page web app for Malaysian **domestic (residential, Peninsular Malaysia
 - the **old tariff** — Tariff A, pre-July 2025 tiered blocks, and
 - the **new RP4 tariff** — effective **1 July 2025**, with flat component rates, the monthly **AFA** (Automatic Fuel Adjustment), and the **EEI** (Energy Efficiency Incentive) rebate.
 
-**Key in your actual monthly bill (RM, as billed under RP4)** for up to 3 months — the calculator inverts the RP4 formula to estimate your usage, then computes what the same month would have cost under the old RP3 tariff. A toggle switches to direct usage (kWh) entry instead. Each month has its own AFA (it is gazetted monthly). Results show per-month cards with full bill breakdowns, an interactive bar chart, a 0–3,000 kWh cost curve with breakeven markers, and a plain-language summary.
+**Key in your actual monthly bill (RM, as billed under RP4) and the usage (kWh) printed on that bill** for up to 3 months — the RP4 side is your bill taken as-is (no calculation, no AFA input needed), and the calculator computes what the same usage would have cost under the old RP3 tariff. Results show per-month cards with the RP3 breakdown and effective sen/kWh rates, an interactive bar chart, a 0–3,000 kWh cost curve with breakeven markers (its RP4 line uses the auto-fetched AFA), and a plain-language summary.
 
 > **Unofficial estimate.** Verify with [myTNB](https://www.mytnb.com.my/tariff/index.html) for official figures.
 

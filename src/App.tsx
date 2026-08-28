@@ -11,28 +11,23 @@ import {
   clamp,
   parseBill,
   parseUsage,
-  type InputMode,
   type MonthEntry,
   type MonthResult,
 } from "./lib/model";
-import {
-  calcNewTariff,
-  calcOldTariff,
-  usageFromNewBill,
-  type TaxToggles,
-} from "./lib/tariff";
+import { calcOldTariff, type TaxToggles } from "./lib/tariff";
 
-// Sample data: ~380 / 520 / 745 kWh at AFA +3.80 sen, as usage and as RP4 bills.
+// Sample data: ~380 / 520 / 745 kWh with their RP4 bills at AFA +3.80 sen.
 const SAMPLE_KWH = ["380", "520", "745"];
 const SAMPLE_BILL = ["105.90", "179.26", "368.02"];
 
 export default function App() {
-  const [inputMode, setInputMode] = useState<InputMode>("bill");
   const [months, setMonths] = useState<MonthEntry[]>([
-    { label: "Month 1", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
-    { label: "Month 2", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
-    { label: "Month 3", kwh: "", bill: "", afa: DEFAULT_AFA.toFixed(2) },
+    { label: "Month 1", bill: "", kwh: "" },
+    { label: "Month 2", bill: "", kwh: "" },
+    { label: "Month 3", bill: "", kwh: "" },
   ]);
+  // Auto-fetched AFA is only used for the RP4 line on the cost-curve chart —
+  // the per-month RP4 side is the entered bill, taken as-is.
   const [afaFetched, setAfaFetched] = useState<AfaResult | null>(null);
   const [icptInput, setIcptInput] = useState("0");
   const [taxes, setTaxes] = useState<TaxToggles>({ kwtbb: true, sst: true });
@@ -41,10 +36,7 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     fetchAfa().then((result) => {
-      if (!alive) return;
-      setAfaFetched(result);
-      // Prefill every month's AFA with the fetched value (all still editable).
-      setMonths((prev) => prev.map((m) => ({ ...m, afa: result.value.toFixed(2) })));
+      if (alive) setAfaFetched(result);
     });
     return () => {
       alive = false;
@@ -55,53 +47,26 @@ export default function App() {
 
   const results: MonthResult[] = useMemo(() => {
     return months.flatMap((month, index) => {
-      const afaSen = clamp(Number(month.afa) || 0, -10, 10);
-
-      let usage: number;
-      let usageEstimated: boolean;
-      let newTotalRM: number;
-      if (inputMode === "bill") {
-        const billRM = parseBill(month.bill);
-        if (billRM === null) return [];
-        usage = usageFromNewBill(billRM, afaSen, taxes);
-        usageEstimated = true;
-        newTotalRM = billRM;
-      } else {
-        const parsed = parseUsage(month.kwh);
-        if (parsed === null) return [];
-        usage = parsed;
-        usageEstimated = false;
-        newTotalRM = calcNewTariff(usage, afaSen, taxes).total;
-      }
-
+      const billRM = parseBill(month.bill);
+      const usage = parseUsage(month.kwh);
+      if (billRM === null || usage === null) return [];
       const oldBill = calcOldTariff(usage, icptSen, taxes);
-      const newBill = calcNewTariff(usage, afaSen, taxes);
-      const diff = newTotalRM - oldBill.total;
+      const diff = billRM - oldBill.total;
       return [
         {
           index,
           label: month.label || `Month ${index + 1}`,
           usage,
-          usageEstimated,
-          afaSen,
           oldBill,
-          newBill,
-          newTotalRM,
+          newTotalRM: billRM,
           diff,
           pct: oldBill.total > 0 ? (diff / oldBill.total) * 100 : 0,
         },
       ];
     });
-  }, [months, inputMode, icptSen, taxes]);
+  }, [months, icptSen, taxes]);
 
-  // The cost curve needs a single AFA: use the first entered month's value,
-  // falling back to the fetched/default AFA when no month is entered yet.
-  const curveAfaSen =
-    results.length > 0
-      ? results[0].afaSen
-      : clamp(afaFetched?.value ?? DEFAULT_AFA, -10, 10);
-  const curveAfaLabel = results.length > 0 ? results[0].label : null;
-
+  const curveAfaSen = clamp(afaFetched?.value ?? DEFAULT_AFA, -10, 10);
   const curve = useMemo(
     () => buildCurve(curveAfaSen, icptSen, taxes),
     [curveAfaSen, icptSen, taxes],
@@ -115,15 +80,10 @@ export default function App() {
     setMonths((prev) =>
       prev.map((m, i) => ({
         ...m,
-        kwh: SAMPLE_KWH[i] ?? "",
         bill: SAMPLE_BILL[i] ?? "",
+        kwh: SAMPLE_KWH[i] ?? "",
       })),
     );
-
-  const resetAfa = () => {
-    const value = (afaFetched?.value ?? DEFAULT_AFA).toFixed(2);
-    setMonths((prev) => prev.map((m) => ({ ...m, afa: value })));
-  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
@@ -138,9 +98,10 @@ export default function App() {
           </span>
         </div>
         <p className="mt-2 max-w-3xl text-sm text-ink-secondary">
-          Key in your actual monthly TNB bill (billed under the new{" "}
-          <strong>RP4</strong> tariff) — the calculator estimates your usage and
-          shows what the same month would have cost under the{" "}
+          Key in your actual monthly TNB bill (<strong>RM</strong>, as billed
+          under the new <strong>RP4</strong> tariff) and the usage
+          (<strong>kWh</strong>) shown on that bill — the calculator computes what
+          the same usage would have cost under the{" "}
           <strong>old RP3 domestic tariff</strong> (pre-July 2025 tiered blocks).
           For domestic users in Peninsular Malaysia.
         </p>
@@ -149,12 +110,8 @@ export default function App() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <InputsPanel
-            inputMode={inputMode}
-            onInputModeChange={setInputMode}
             months={months}
             onMonthChange={updateMonth}
-            afaFetched={afaFetched}
-            onAfaReset={resetAfa}
             icptInput={icptInput}
             onIcptChange={setIcptInput}
             taxes={taxes}
@@ -168,9 +125,9 @@ export default function App() {
             <div className="card flex h-full min-h-[200px] flex-col items-center justify-center gap-3 p-8 text-center">
               <p className="text-lg font-semibold">No months entered yet</p>
               <p className="max-w-sm text-sm text-ink-secondary">
-                {inputMode === "bill"
-                  ? "Key in your monthly bill amount on the left (1–3 months), or load the sample data to see the comparison instantly."
-                  : "Enter your monthly usage on the left (1–3 months), or load the sample data to see the comparison instantly."}
+                Key in the bill amount (RM) and usage (kWh) from your TNB bill
+                for 1–3 months, or load the sample data to see the comparison
+                instantly.
               </p>
               <button type="button" className="btn-secondary" onClick={fillSample}>
                 Load sample data
@@ -195,7 +152,7 @@ export default function App() {
           breakevens={breakevens}
           results={results}
           afaSen={curveAfaSen}
-          afaSourceLabel={curveAfaLabel}
+          afaSource={afaFetched?.source === "mytnb" ? "auto-fetched from myTNB" : "default value"}
         />
 
         <div>
@@ -214,9 +171,11 @@ export default function App() {
 
       <footer className="mt-10 border-t border-grid pt-4 text-xs text-ink-muted">
         <p>
-          Old RP3 tariff shown at base rate (ICPT = 0 unless set). New RP4 tariff
-          includes AFA as entered; usage estimated from bills is approximate.
-          Rates: RP4, effective 1 July 2025. Verify with{" "}
+          Old RP3 tariff computed at base rate (ICPT = 0 unless set). The RP4
+          side is your bill as entered. Cost-curve RP4 line uses AFA{" "}
+          {curveAfaSen >= 0 ? "+" : "−"}
+          {Math.abs(curveAfaSen).toFixed(2)} sen/kWh. Rates: RP4, effective 1
+          July 2025. Verify with{" "}
           <a
             className="underline hover:text-ink"
             href="https://www.mytnb.com.my/tariff/index.html"

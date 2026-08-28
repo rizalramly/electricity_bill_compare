@@ -1,15 +1,10 @@
 import { useId, useState } from "react";
-import type { AfaResult } from "../lib/afa";
-import { MAX_BILL_RM, MAX_KWH, type InputMode, type MonthEntry } from "../lib/model";
+import { MAX_BILL_RM, MAX_KWH, type MonthEntry } from "../lib/model";
 import type { TaxToggles } from "../lib/tariff";
 
 interface Props {
-  inputMode: InputMode;
-  onInputModeChange: (mode: InputMode) => void;
   months: MonthEntry[];
   onMonthChange: (index: number, patch: Partial<MonthEntry>) => void;
-  afaFetched: AfaResult | null;
-  onAfaReset: () => void;
   icptInput: string;
   onIcptChange: (value: string) => void;
   taxes: TaxToggles;
@@ -17,31 +12,24 @@ interface Props {
   onFillSample: () => void;
 }
 
-function afaCaption(afaFetched: AfaResult | null): string {
-  if (afaFetched?.source === "mytnb") {
-    return `Auto-fetched from myTNB (${afaFetched.month})`;
-  }
-  return "Default value (Aug 2026) — verify at mytnb.com.my/tariff";
-}
-
 function MonthField({
   month,
   index,
-  inputMode,
   onChange,
 }: {
   month: MonthEntry;
   index: number;
-  inputMode: InputMode;
   onChange: (patch: Partial<MonthEntry>) => void;
 }) {
-  const id = useId();
-  const afaId = useId();
-  const billMode = inputMode === "bill";
-  const raw = billMode ? month.bill : month.kwh;
-  const max = billMode ? MAX_BILL_RM : MAX_KWH;
-  const sliderMax = billMode ? 3000 : MAX_KWH;
-  const value = raw === "" ? 0 : Number(raw) || 0;
+  const billId = useId();
+  const kwhId = useId();
+  const billValue = month.bill === "" ? 0 : Number(month.bill) || 0;
+  const billInvalid =
+    month.bill !== "" && (Number(month.bill) < 0 || Number(month.bill) > MAX_BILL_RM);
+  const kwhInvalid =
+    month.kwh !== "" && (Number(month.kwh) < 0 || Number(month.kwh) > MAX_KWH);
+  const oneMissing =
+    (month.bill !== "") !== (month.kwh !== "");
 
   return (
     <fieldset className="rounded-xl border border-grid bg-white/60 p-3">
@@ -51,79 +39,77 @@ function MonthField({
         value={month.label}
         onChange={(e) => onChange({ label: e.target.value })}
       />
+
       <div className="flex items-center gap-3">
         <input
           type="range"
-          aria-label={`${month.label || `Month ${index + 1}`} ${billMode ? "bill" : "usage"} slider`}
+          aria-label={`${month.label || `Month ${index + 1}`} bill slider`}
           min={0}
-          max={sliderMax}
-          step={billMode ? 1 : 5}
-          value={Math.min(value, sliderMax)}
-          onChange={(e) =>
-            onChange(billMode ? { bill: e.target.value } : { kwh: e.target.value })
-          }
+          max={3000}
+          step={1}
+          value={Math.min(billValue, 3000)}
+          onChange={(e) => onChange({ bill: e.target.value })}
         />
         <div className="flex items-center gap-1.5">
-          {billMode && (
-            <label htmlFor={id} className="text-xs text-ink-muted">
-              RM
-            </label>
-          )}
+          <label htmlFor={billId} className="text-xs text-ink-muted">
+            RM
+          </label>
           <input
-            id={id}
+            id={billId}
             type="number"
             inputMode="decimal"
             className="input-field w-24 text-right tabular-nums"
-            placeholder="—"
+            placeholder="Bill"
             min={0}
-            max={max}
-            step={billMode ? 0.01 : 1}
-            value={raw}
-            onChange={(e) =>
-              onChange(billMode ? { bill: e.target.value } : { kwh: e.target.value })
-            }
+            max={MAX_BILL_RM}
+            step={0.01}
+            value={month.bill}
+            onChange={(e) => onChange({ bill: e.target.value })}
           />
-          {!billMode && (
-            <label htmlFor={id} className="text-xs text-ink-muted">
-              kWh
-            </label>
-          )}
         </div>
       </div>
-      {raw !== "" && (Number(raw) < 0 || Number(raw) > max) && (
-        <p role="alert" className="mt-1 text-xs text-status-bad">
-          Enter a value between 0 and {max.toLocaleString()}{" "}
-          {billMode ? "RM" : "kWh"} (clamped for calculation).
-        </p>
-      )}
+      <p className="mt-0.5 text-[11px] text-ink-muted">
+        Bill amount as billed under RP4
+      </p>
+
       <div className="mt-2 flex items-center gap-2">
-        <label htmlFor={afaId} className="text-xs font-medium text-ink-secondary">
-          AFA
-        </label>
         <input
-          id={afaId}
+          id={kwhId}
           type="number"
           inputMode="decimal"
           className="input-field w-24 text-right tabular-nums"
-          min={-10}
-          max={10}
-          step={0.01}
-          value={month.afa}
-          onChange={(e) => onChange({ afa: e.target.value })}
+          placeholder="Usage"
+          min={0}
+          max={MAX_KWH}
+          step={1}
+          value={month.kwh}
+          onChange={(e) => onChange({ kwh: e.target.value })}
         />
-        <span className="text-xs text-ink-muted">sen/kWh</span>
+        <label htmlFor={kwhId} className="text-xs text-ink-muted">
+          kWh — usage on that bill (for the RP3 calculation)
+        </label>
       </div>
+
+      {(billInvalid || kwhInvalid) && (
+        <p role="alert" className="mt-1 text-xs text-status-bad">
+          {billInvalid
+            ? `Bill must be between RM 0 and RM ${MAX_BILL_RM.toLocaleString()}`
+            : `Usage must be between 0 and ${MAX_KWH.toLocaleString()} kWh`}{" "}
+          (clamped for calculation).
+        </p>
+      )}
+      {oneMissing && !billInvalid && !kwhInvalid && (
+        <p className="mt-1 text-xs text-ink-muted">
+          Enter both the bill (RM) and the usage (kWh) to include this month.
+        </p>
+      )}
     </fieldset>
   );
 }
 
 export function InputsPanel({
-  inputMode,
-  onInputModeChange,
   months,
   onMonthChange,
-  afaFetched,
-  onAfaReset,
   icptInput,
   onIcptChange,
   taxes,
@@ -144,41 +130,9 @@ export function InputsPanel({
         </button>
       </div>
 
-      <div
-        role="group"
-        aria-label="Input mode"
-        className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-surface-page p-1 ring-1 ring-grid"
-      >
-        <button
-          type="button"
-          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
-            inputMode === "bill"
-              ? "bg-white text-ink shadow-sm ring-1 ring-grid"
-              : "text-ink-secondary hover:text-ink"
-          }`}
-          aria-pressed={inputMode === "bill"}
-          onClick={() => onInputModeChange("bill")}
-        >
-          Bill amount (RM)
-        </button>
-        <button
-          type="button"
-          className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
-            inputMode === "kwh"
-              ? "bg-white text-ink shadow-sm ring-1 ring-grid"
-              : "text-ink-secondary hover:text-ink"
-          }`}
-          aria-pressed={inputMode === "kwh"}
-          onClick={() => onInputModeChange("kwh")}
-        >
-          Usage (kWh)
-        </button>
-      </div>
-
       <p className="mb-3 text-xs text-ink-secondary">
-        {inputMode === "bill"
-          ? "Key in your actual monthly bill total (RP4, as billed — including AFA and taxes) for up to 3 months. Usage is estimated automatically."
-          : "Enter total monthly usage for up to 3 months (labels are editable)."}
+        From each TNB bill (up to 3 months), key in the total amount (RM) and
+        the usage (kWh) printed on it. Labels are editable.
       </p>
       <div className="flex flex-col gap-3">
         {months.map((month, index) => (
@@ -186,29 +140,9 @@ export function InputsPanel({
             key={index}
             month={month}
             index={index}
-            inputMode={inputMode}
             onChange={(patch) => onMonthChange(index, patch)}
           />
         ))}
-      </div>
-
-      <div className="mt-5 border-t border-grid pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">AFA — Automatic Fuel Adjustment</h3>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={onAfaReset}
-            title="Reset every month's AFA to the fetched value"
-          >
-            ↺ Reset all
-          </button>
-        </div>
-        <p className="mt-1 text-xs text-ink-muted">{afaCaption(afaFetched)}</p>
-        <p className="mt-1 text-xs text-ink-secondary">
-          AFA is gazetted monthly — set it per month above (it affects the usage
-          estimated from your bill). Negative = rebate. Exempt when usage ≤ 600 kWh.
-        </p>
       </div>
 
       <div className="mt-5 border-t border-grid pt-4">
@@ -249,6 +183,7 @@ export function InputsPanel({
             </div>
 
             <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Taxes on the RP3 side</p>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"

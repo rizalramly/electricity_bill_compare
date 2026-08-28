@@ -31,7 +31,7 @@ function BreakdownTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const { result } = payload[0].payload;
-  const { oldBill, newBill } = result;
+  const { oldBill } = result;
   const row = (label: string, value: number) => (
     <div className="flex justify-between gap-6">
       <span className="text-ink-secondary">{label}</span>
@@ -44,28 +44,17 @@ function BreakdownTooltip({
         {result.label} · {formatKwh(result.usage)}
       </p>
       <p className="mb-0.5 font-semibold" style={{ color: OLD_COLOR }}>
-        Old RP3 — {formatRM(oldBill.total)}
+        Old RP3 (computed) — {formatRM(oldBill.total)}
       </p>
       {row("Energy (blocks)", oldBill.energyCharge)}
       {oldBill.icptAmount !== 0 && row(`ICPT ${formatSigned(oldBill.icptSen)} sen`, oldBill.icptAmount)}
       {oldBill.kwtbb > 0 && row("KWTBB 1.6%", oldBill.kwtbb)}
       {oldBill.sst > 0 && row("SST 8%", oldBill.sst)}
       <p className="mb-0.5 mt-2 font-semibold" style={{ color: NEW_COLOR }}>
-        New RP4 — {formatRM(result.newTotalRM)}
+        New RP4 (your bill) — {formatRM(result.newTotalRM)}
       </p>
-      {row(`Energy ${newBill.energyRateSen} sen`, newBill.energyCharge)}
-      {row("Capacity 4.55 sen", newBill.capacityCharge)}
-      {row("Network 12.85 sen", newBill.networkCharge)}
-      {row(newBill.retailWaived ? "Retail (waived)" : "Retail", newBill.retailCharge)}
-      {row(
-        newBill.afaApplies ? `AFA ${formatSigned(newBill.afaSen)} sen` : "AFA (exempt ≤ 600)",
-        newBill.afaAmount,
-      )}
-      {newBill.eeiRebate > 0 && row(`EEI −${newBill.eeiRateSen} sen`, -newBill.eeiRebate)}
-      {newBill.kwtbb > 0 && row("KWTBB 1.6%", newBill.kwtbb)}
-      {newBill.sst > 0 && row("SST 8%", newBill.sst)}
       <div className="mt-2 border-t border-grid pt-1 font-semibold">
-        {row("Difference (new − old)", result.diff)}
+        {row("Difference (RP4 − RP3)", result.diff)}
       </div>
     </div>
   );
@@ -90,8 +79,8 @@ export function ComparisonBarChart({ results }: { results: MonthResult[] }) {
         Month comparison
       </h2>
       <p className="mb-4 text-xs text-ink-secondary">
-        Old vs new total per month — hover a bar for the full breakdown; click a
-        legend entry to show/hide a series.
+        Computed RP3 vs your billed RP4 total per month — hover a bar for the
+        breakdown; click a legend entry to show/hide a series.
       </p>
       <div className="h-72 w-full">
         <ResponsiveContainer>
@@ -125,7 +114,7 @@ export function ComparisonBarChart({ results }: { results: MonthResult[] }) {
             />
             <Bar
               dataKey="New"
-              name="New tariff (RP4)"
+              name="New tariff (RP4, billed)"
               fill={NEW_COLOR}
               radius={[4, 4, 0, 0]}
               hide={hidden.New}

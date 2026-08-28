@@ -1,32 +1,21 @@
-import type { NewBillBreakdown, OldBillBreakdown } from "./tariff";
-
-/** How months are entered: actual RP4 bill amount (default) or usage in kWh. */
-export type InputMode = "bill" | "kwh";
+import type { OldBillBreakdown } from "./tariff";
 
 export interface MonthEntry {
   label: string;
-  /** Raw usage input string (kWh mode); empty = month not entered. */
-  kwh: string;
-  /** Raw bill input string in RM (bill mode); empty = month not entered. */
+  /** Actual monthly bill in RM as billed under RP4 (raw input string). */
   bill: string;
-  /** Per-month AFA in sen/kWh (raw input string) — AFA is gazetted monthly. */
-  afa: string;
+  /** Monthly usage in kWh from the bill statement (raw input string). */
+  kwh: string;
 }
 
 export interface MonthResult {
   index: number;
   label: string;
+  /** Usage entered from the bill statement (kWh) — drives the RP3 calculation. */
   usage: number;
-  /** True when usage was estimated from an entered bill amount. */
-  usageEstimated: boolean;
-  /** AFA used for this month (sen/kWh). */
-  afaSen: number;
+  /** Computed old RP3 tariff bill for that usage. */
   oldBill: OldBillBreakdown;
-  newBill: NewBillBreakdown;
-  /**
-   * The RP4 total shown/compared: the entered bill amount in bill mode
-   * (authoritative), or the computed newBill.total in kWh mode.
-   */
+  /** The actual RP4 bill amount as entered (RM) — used as-is, no calculation. */
   newTotalRM: number;
   /** new − old (negative = new tariff is cheaper). */
   diff: number;

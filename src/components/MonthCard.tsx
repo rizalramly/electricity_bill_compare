@@ -25,7 +25,7 @@ function Line({
 }
 
 export function MonthCard({ result }: { result: MonthResult }) {
-  const { oldBill, newBill } = result;
+  const { oldBill } = result;
   const saves = result.diff < 0;
   const isZero = Math.abs(result.diff) < 0.005;
 
@@ -34,12 +34,7 @@ export function MonthCard({ result }: { result: MonthResult }) {
       <header className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold">{result.label}</h3>
-          <p className="text-xs text-ink-muted">
-            {result.usageEstimated ? "≈ " : ""}
-            {formatKwh(result.usage)}
-            {result.usageEstimated ? " (est. from bill)" : ""} · AFA{" "}
-            {formatSigned(result.afaSen)} sen
-          </p>
+          <p className="text-xs text-ink-muted">{formatKwh(result.usage)}</p>
         </div>
         <span
           className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -65,7 +60,7 @@ export function MonthCard({ result }: { result: MonthResult }) {
         <div>
           <dt className="flex items-center gap-1.5 text-xs text-ink-muted">
             <span aria-hidden="true" className="inline-block h-2.5 w-2.5 rounded-sm bg-series-new" />
-            New (RP4)
+            New (RP4, billed)
           </dt>
           <dd className="font-semibold tabular-nums">{formatRM(result.newTotalRM)}</dd>
         </div>
@@ -82,92 +77,44 @@ export function MonthCard({ result }: { result: MonthResult }) {
 
       <details className="mt-auto text-xs">
         <summary className="cursor-pointer select-none font-medium text-ink-secondary hover:text-ink">
-          Breakdown
+          RP3 breakdown
         </summary>
-        <div className="mt-2 grid gap-4 sm:grid-cols-1">
-          <div>
-            <h4 className="mb-1 flex items-center gap-1.5 font-semibold">
-              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm bg-series-old" />
-              Old tariff (RP3)
-            </h4>
-            {oldBill.blocks.map((block) => (
-              <Line
-                key={block.label}
-                label={`${block.label} × ${block.rateSen} sen`}
-                amount={formatRM(block.amount)}
-              />
-            ))}
-            {oldBill.icptSen !== 0 && (
-              <Line
-                label={`ICPT ${formatSigned(oldBill.icptSen)} sen × ${result.usage} kWh`}
-                amount={formatRM(oldBill.icptAmount)}
-                negative={oldBill.icptAmount < 0}
-              />
-            )}
-            {oldBill.minimumChargeApplied && (
-              <Line label="Minimum monthly charge" amount={formatRM(oldBill.subtotal)} />
-            )}
-            {oldBill.kwtbb > 0 && (
-              <Line label="KWTBB 1.6%" amount={formatRM(oldBill.kwtbb)} />
-            )}
-            {oldBill.sst > 0 && <Line label="SST 8%" amount={formatRM(oldBill.sst)} />}
-            <div className="mt-1 border-t border-grid pt-1">
-              <Line label="Total" amount={formatRM(oldBill.total)} />
-            </div>
+        <div className="mt-2">
+          <h4 className="mb-1 flex items-center gap-1.5 font-semibold">
+            <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm bg-series-old" />
+            Old tariff (RP3) — computed from {formatKwh(result.usage)}
+          </h4>
+          {oldBill.blocks.map((block) => (
+            <Line
+              key={block.label}
+              label={`${block.label} × ${block.rateSen} sen`}
+              amount={formatRM(block.amount)}
+            />
+          ))}
+          {oldBill.icptSen !== 0 && (
+            <Line
+              label={`ICPT ${formatSigned(oldBill.icptSen)} sen × ${result.usage} kWh`}
+              amount={formatRM(oldBill.icptAmount)}
+              negative={oldBill.icptAmount < 0}
+            />
+          )}
+          {oldBill.minimumChargeApplied && (
+            <Line label="Minimum monthly charge" amount={formatRM(oldBill.subtotal)} />
+          )}
+          {oldBill.kwtbb > 0 && (
+            <Line label="KWTBB 1.6%" amount={formatRM(oldBill.kwtbb)} />
+          )}
+          {oldBill.sst > 0 && <Line label="SST 8%" amount={formatRM(oldBill.sst)} />}
+          <div className="mt-1 border-t border-grid pt-1">
+            <Line label="RP3 total" amount={formatRM(oldBill.total)} />
+            <Line label="Your RP4 bill (as billed)" amount={formatRM(result.newTotalRM)} muted />
           </div>
-
-          <div>
-            <h4 className="mb-1 flex items-center gap-1.5 font-semibold">
-              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-sm bg-series-new" />
-              New tariff (RP4)
-            </h4>
-            <Line
-              label={`Energy ${newBill.energyRateSen} sen/kWh`}
-              amount={formatRM(newBill.energyCharge)}
-            />
-            <Line label="Capacity 4.55 sen/kWh" amount={formatRM(newBill.capacityCharge)} />
-            <Line label="Network 12.85 sen/kWh" amount={formatRM(newBill.networkCharge)} />
-            <Line
-              label={newBill.retailWaived ? "Retail — waived (≤ 600 kWh)" : "Retail RM10/month"}
-              amount={formatRM(newBill.retailCharge)}
-              muted={newBill.retailWaived}
-            />
-            <Line
-              label={
-                newBill.afaApplies
-                  ? `AFA ${formatSigned(newBill.afaSen)} sen × ${result.usage} kWh`
-                  : "AFA — exempt (≤ 600 kWh)"
-              }
-              amount={formatRM(newBill.afaAmount)}
-              muted={!newBill.afaApplies}
-              negative={newBill.afaAmount < 0}
-            />
-            {newBill.eeiRebate > 0 && (
-              <Line
-                label={`EEI rebate ${newBill.eeiRateSen} sen/kWh`}
-                amount={`−${formatRM(newBill.eeiRebate)}`}
-                negative
-              />
-            )}
-            {newBill.kwtbb > 0 && (
-              <Line label="KWTBB 1.6%" amount={formatRM(newBill.kwtbb)} />
-            )}
-            {newBill.sst > 0 && <Line label="SST 8%" amount={formatRM(newBill.sst)} />}
-            <div className="mt-1 border-t border-grid pt-1">
-              <Line
-                label={result.usageEstimated ? "Total (computed)" : "Total"}
-                amount={formatRM(newBill.total)}
-              />
-              {result.usageEstimated &&
-                Math.abs(newBill.total - result.newTotalRM) > 0.01 && (
-                  <Line
-                    label="Your entered bill"
-                    amount={formatRM(result.newTotalRM)}
-                    muted
-                  />
-                )}
-            </div>
-          </div>
+          {result.usage > 0 && (
+            <p className="mt-2 text-[11px] text-ink-muted">
+              Effective rate: RP3 {((oldBill.total / result.usage) * 100).toFixed(1)} sen/kWh
+              {" · "}RP4 {((result.newTotalRM / result.usage) * 100).toFixed(1)} sen/kWh
+            </p>
+          )}
         </div>
       </details>
     </article>

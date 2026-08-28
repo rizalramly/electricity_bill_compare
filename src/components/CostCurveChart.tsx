@@ -66,14 +66,14 @@ export function CostCurveChart({
   breakevens,
   results,
   afaSen,
-  afaSourceLabel,
+  afaSource,
 }: {
   curve: CurvePoint[];
   breakevens: Breakeven[];
   results: MonthResult[];
   afaSen: number;
-  /** Which month's AFA the curve uses (null = fetched/default value). */
-  afaSourceLabel: string | null;
+  /** Where the curve's AFA value came from, e.g. "auto-fetched from myTNB". */
+  afaSource: string;
 }) {
   const [hidden, setHidden] = useState<Record<string, boolean>>({});
   const toggle = (key: string) =>
@@ -85,8 +85,9 @@ export function CostCurveChart({
         Cost curve — 0 to 3,000 kWh
       </h2>
       <p className="mb-4 text-xs text-ink-secondary">
-        Monthly bill vs usage at AFA {formatSigned(afaSen)} sen/kWh
-        {afaSourceLabel ? ` (${afaSourceLabel}'s AFA)` : ""}. Note the EEI
+        Monthly bill vs usage. The RP4 line uses AFA {formatSigned(afaSen)}{" "}
+        sen/kWh ({afaSource}); your entered bills are plotted as ● dots, so they
+        may sit off the line if your billed AFA differed. Note the EEI
         staircase below 1,000 kWh, the combined step at 600 kWh and the energy-rate
         jump at 1,500 kWh. Drag the strip below the chart to zoom (e.g. the
         0–1,000 kWh region).{" "}

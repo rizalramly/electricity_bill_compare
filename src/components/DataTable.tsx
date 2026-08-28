@@ -1,5 +1,5 @@
 import type { CurvePoint } from "../lib/curve";
-import { formatRM, formatSigned } from "../lib/format";
+import { formatRM } from "../lib/format";
 import type { MonthResult } from "../lib/model";
 
 export function DataTable({
@@ -21,9 +21,8 @@ export function DataTable({
               <tr className="border-b border-grid text-ink-muted">
                 <th scope="col" className="py-1.5 pr-4 font-medium">Month</th>
                 <th scope="col" className="py-1.5 pr-4 text-right font-medium">Usage (kWh)</th>
-                <th scope="col" className="py-1.5 pr-4 text-right font-medium">AFA (sen/kWh)</th>
-                <th scope="col" className="py-1.5 pr-4 text-right font-medium">Old (RP3)</th>
-                <th scope="col" className="py-1.5 pr-4 text-right font-medium">New (RP4)</th>
+                <th scope="col" className="py-1.5 pr-4 text-right font-medium">Old (RP3, computed)</th>
+                <th scope="col" className="py-1.5 pr-4 text-right font-medium">New (RP4, billed)</th>
                 <th scope="col" className="py-1.5 text-right font-medium">Difference</th>
               </tr>
             </thead>
@@ -32,11 +31,7 @@ export function DataTable({
                 <tr key={result.index} className="border-b border-grid/60">
                   <th scope="row" className="py-1.5 pr-4 font-medium">{result.label}</th>
                   <td className="py-1.5 pr-4 text-right tabular-nums">
-                    {result.usageEstimated ? "≈" : ""}
                     {result.usage.toLocaleString()}
-                  </td>
-                  <td className="py-1.5 pr-4 text-right tabular-nums">
-                    {formatSigned(result.afaSen)}
                   </td>
                   <td className="py-1.5 pr-4 text-right tabular-nums">
                     {formatRM(result.oldBill.total)}
