@@ -33,6 +33,8 @@ export interface OldBillBreakdown {
   blocks: OldBlockLine[];
   energyCharge: number;
   icptSen: number;
+  /** ICPT applies only when monthly usage > 1,500 kWh (domestic exemption). */
+  icptApplies: boolean;
   icptAmount: number;
   minimumChargeApplied: boolean;
   /** After minimum charge, before taxes. */
@@ -134,22 +136,43 @@ export const KWTBB_RATE = 0.016;
 export const KWTBB_THRESHOLD_KWH = 300;
 export const SST_RATE = 0.08;
 export const SST_THRESHOLD_KWH = 600;
+/** Domestic users ≤ 1,500 kWh/month were ICPT-exempt (Jan 2023 – Jun 2025). */
+export const OLD_ICPT_EXEMPTION_KWH = 1500;
 
-/** KWTBB (RE Fund): 1.6% of the bill, only when monthly usage > 300 kWh. */
-export function kwtbbCharge(billRM: number, usageKwh: number): number {
-  return usageKwh > KWTBB_THRESHOLD_KWH ? billRM * KWTBB_RATE : 0;
+/**
+ * KWTBB (RE Fund): 1.6% of the consumption-related charges, only when monthly
+ * usage > 300 kWh. The base EXCLUDES statutory pass-throughs and taxes:
+ * under the old tariff it is the tiered energy charge (excluding ICPT); under
+ * RP4 it is energy + capacity + network + AFA − EEI (excluding the RM10
+ * retail charge and SST).
+ */
+export function kwtbbCharge(baseRM: number, usageKwh: number): number {
+  return usageKwh > KWTBB_THRESHOLD_KWH ? baseRM * KWTBB_RATE : 0;
 }
 
 /**
- * Service Tax (SST), 8%, only when monthly usage > 600 kWh.
- *
- * Simplified: taxes the whole bill when usage > 600 kWh. The official method
- * taxes only the portion of consumption ABOVE 600 kWh — to adopt it, replace
- * the body of this one function (compute the bill attributable to kWh > 600
- * and apply 8% to that portion only).
+ * Service Tax (SST), 8% (rate since 1 Mar 2024), only when monthly usage
+ * > 600 kWh — and officially charged ONLY on the charges attributable to the
+ * consumption ABOVE 600 kWh (the first 600 kWh stay exempt). Callers pass the
+ * charge for the portion above 600 kWh as the base.
  */
-export function sstCharge(billRM: number, usageKwh: number): number {
-  return usageKwh > SST_THRESHOLD_KWH ? billRM * SST_RATE : 0;
+export function sstCharge(baseAbove600RM: number, usageKwh: number): number {
+  return usageKwh > SST_THRESHOLD_KWH ? baseAbove600RM * SST_RATE : 0;
+}
+
+/** Tiered energy charge (RM) for a given usage under the old tariff. */
+export function oldEnergyCharge(usageKwh: number): number {
+  let remaining = Math.max(0, usageKwh);
+  let prevBound = 0;
+  let charge = 0;
+  for (const block of OLD_BLOCKS) {
+    if (remaining <= 0) break;
+    const kwhInBlock = Math.min(remaining, block.upTo - prevBound);
+    charge += (kwhInBlock * block.rateSen) / 100;
+    remaining -= kwhInBlock;
+    prevBound = block.upTo;
+  }
+  return charge;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,19 +206,28 @@ export function calcOldTariff(
     prevBound = block.upTo;
   }
 
-  const icptAmount = (usage * icptSen) / 100;
+  // Domestic ICPT exemption: only months above 1,500 kWh paid the surcharge
+  // (then on ALL kWh), per the RP3 ICPT schedules of 2023 – Jun 2025.
+  const icptApplies = usage > OLD_ICPT_EXEMPTION_KWH;
+  const icptAmount = icptApplies ? (usage * icptSen) / 100 : 0;
   const beforeMinimum = energyCharge + icptAmount;
   const minimumChargeApplied = beforeMinimum < OLD_MINIMUM_CHARGE_RM;
   const subtotal = minimumChargeApplied ? OLD_MINIMUM_CHARGE_RM : beforeMinimum;
 
-  const kwtbb = taxes.kwtbb ? kwtbbCharge(subtotal, usage) : 0;
-  const sst = taxes.sst ? sstCharge(subtotal, usage) : 0;
+  // KWTBB base: the tiered energy charge only (excludes ICPT and taxes).
+  const kwtbb = taxes.kwtbb ? kwtbbCharge(energyCharge, usage) : 0;
+  // SST base: the charges attributable to kWh above 600 — the tiered energy
+  // beyond the 600 kWh mark plus the ICPT share of those kWh.
+  const energyAbove600 = Math.max(0, energyCharge - oldEnergyCharge(SST_THRESHOLD_KWH));
+  const icptAbove600 = icptApplies ? (Math.max(0, usage - SST_THRESHOLD_KWH) * icptSen) / 100 : 0;
+  const sst = taxes.sst ? sstCharge(energyAbove600 + icptAbove600, usage) : 0;
 
   return {
     usage,
     blocks,
     energyCharge,
     icptSen,
+    icptApplies,
     icptAmount,
     minimumChargeApplied,
     subtotal,
@@ -264,8 +296,15 @@ export function calcNewTariff(
   const subtotal =
     energyCharge + capacityCharge + networkCharge + retailCharge + afaAmount - eeiRebate;
 
-  const kwtbb = taxes.kwtbb ? kwtbbCharge(subtotal, usage) : 0;
-  const sst = taxes.sst ? sstCharge(subtotal, usage) : 0;
+  // KWTBB base: energy + capacity + network + AFA − EEI (retail excluded).
+  const kwtbbBase =
+    energyCharge + capacityCharge + networkCharge + afaAmount - eeiRebate;
+  const kwtbb = taxes.kwtbb ? kwtbbCharge(kwtbbBase, usage) : 0;
+  // SST base: the per-kWh charges for the consumption above 600 kWh
+  // (energy + capacity + network on those kWh; retail excluded).
+  const perKwhRateSen = energyRateSen + RP4.capacitySen + RP4.networkSen;
+  const sstBase = (Math.max(0, usage - SST_THRESHOLD_KWH) * perKwhRateSen) / 100;
+  const sst = taxes.sst ? sstCharge(sstBase, usage) : 0;
 
   return {
     usage,

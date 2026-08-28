@@ -54,10 +54,18 @@ describe("old tariff — block boundaries", () => {
     expect(calcOldTariff(20, 0, NO_TAXES).minimumChargeApplied).toBe(false);
   });
 
-  it("applies ICPT to all kWh", () => {
+  it("ICPT is exempt for domestic usage ≤ 1,500 kWh", () => {
     const base = calcOldTariff(500, 0, NO_TAXES);
-    const withIcpt = calcOldTariff(500, 2, NO_TAXES);
-    expect(withIcpt.subtotal - base.subtotal).toBeCloseTo(500 * 0.02, 6);
+    const withIcpt = calcOldTariff(500, 10, NO_TAXES);
+    expect(withIcpt.icptApplies).toBe(false);
+    expect(withIcpt.subtotal).toBeCloseTo(base.subtotal, 6);
+    expect(calcOldTariff(1500, 10, NO_TAXES).icptAmount).toBe(0);
+  });
+
+  it("ICPT applies to ALL kWh once usage > 1,500 kWh", () => {
+    const bill = calcOldTariff(1501, 10, NO_TAXES);
+    expect(bill.icptApplies).toBe(true);
+    expect(bill.icptAmount).toBeCloseTo(1501 * 0.1, 6);
   });
 });
 
@@ -154,10 +162,29 @@ describe("taxes", () => {
     expect(none.total).toBeCloseTo(none.subtotal, 6);
   });
 
-  it("applies to the old tariff too", () => {
+  it("old tariff: KWTBB on the energy charge, SST only on the portion above 600 kWh", () => {
     const bill = calcOldTariff(700, 0, ALL_TAXES);
-    expect(bill.kwtbb).toBeCloseTo(bill.subtotal * 0.016, 6);
-    expect(bill.sst).toBeCloseTo(bill.subtotal * 0.08, 6);
+    expect(bill.kwtbb).toBeCloseTo(bill.energyCharge * 0.016, 6);
+    // kWh 601–700 are billed at 54.6 sen → RM54.60 taxable
+    expect(bill.sst).toBeCloseTo(54.6 * 0.08, 6);
+  });
+
+  it("old tariff reference bill: 900 kWh with both taxes → RM415.03", () => {
+    const bill = calcOldTariff(900, 0, ALL_TAXES);
+    expect(bill.energyCharge).toBeCloseTo(395.6, 2);
+    expect(bill.kwtbb).toBeCloseTo(6.33, 2);
+    // portion above 600 kWh = 300 × 54.6 sen = RM163.80 → SST RM13.10
+    expect(bill.sst).toBeCloseTo(13.1, 2);
+    expect(bill.total).toBeCloseTo(415.03, 2);
+  });
+
+  it("RP4 reference bill: 900 kWh at AFA +3.80 with both taxes → RM452.53", () => {
+    const bill = calcNewTariff(900, 3.8, ALL_TAXES);
+    // KWTBB base excludes the RM10 retail charge: 399.87 + 34.20 − 9.00
+    expect(bill.kwtbb).toBeCloseTo((399.87 + 34.2 - 9.0) * 0.016, 4);
+    // SST on the 300 kWh above 600 at 44.43 sen/kWh (matches TNB-style RM10.66)
+    expect(bill.sst).toBeCloseTo(300 * 0.4443 * 0.08, 4);
+    expect(bill.total).toBeCloseTo(452.53, 2);
   });
 });
 

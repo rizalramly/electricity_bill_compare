@@ -179,6 +179,9 @@ export function InputsPanel({
               </div>
               <p className="mt-1 text-xs text-ink-muted">
                 Default 0 — the RP3 side is a base-tariff figure unless set.
+                Domestic users ≤ 1,500 kWh/month were ICPT-exempt; above that,
+                the surcharge (historically +10 sen in H1 2025) applied to all
+                kWh.
               </p>
             </div>
 

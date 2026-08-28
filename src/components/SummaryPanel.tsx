@@ -35,7 +35,11 @@ export function SummaryPanel({
         than the same usage under the old RP3 tariff — {formatRM(totalNew)}{" "}
         billed vs {formatRM(totalOld)} computed.
       </p>
-      <p className="mt-2 text-xs text-ink-muted">{favorabilityNote(curve)}</p>
+      <p className="mt-2 text-xs text-ink-muted">
+        {favorabilityNote(curve)} (Derived from the cost curve at its assumed
+        AFA — your actual bills embed each month's real AFA, so the card
+        results above are the authoritative comparison.)
+      </p>
     </section>
   );
 }

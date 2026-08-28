@@ -91,20 +91,25 @@ export function MonthCard({ result }: { result: MonthResult }) {
               amount={formatRM(block.amount)}
             />
           ))}
-          {oldBill.icptSen !== 0 && (
-            <Line
-              label={`ICPT ${formatSigned(oldBill.icptSen)} sen × ${result.usage} kWh`}
-              amount={formatRM(oldBill.icptAmount)}
-              negative={oldBill.icptAmount < 0}
-            />
-          )}
+          {oldBill.icptSen !== 0 &&
+            (oldBill.icptApplies ? (
+              <Line
+                label={`ICPT ${formatSigned(oldBill.icptSen)} sen × ${result.usage} kWh`}
+                amount={formatRM(oldBill.icptAmount)}
+                negative={oldBill.icptAmount < 0}
+              />
+            ) : (
+              <Line label="ICPT — exempt (≤ 1,500 kWh)" amount={formatRM(0)} muted />
+            ))}
           {oldBill.minimumChargeApplied && (
             <Line label="Minimum monthly charge" amount={formatRM(oldBill.subtotal)} />
           )}
           {oldBill.kwtbb > 0 && (
             <Line label="KWTBB 1.6%" amount={formatRM(oldBill.kwtbb)} />
           )}
-          {oldBill.sst > 0 && <Line label="SST 8%" amount={formatRM(oldBill.sst)} />}
+          {oldBill.sst > 0 && (
+            <Line label="SST 8% (portion > 600 kWh)" amount={formatRM(oldBill.sst)} />
+          )}
           <div className="mt-1 border-t border-grid pt-1">
             <Line label="RP3 total" amount={formatRM(oldBill.total)} />
             <Line label="Your RP4 bill (as billed)" amount={formatRM(result.newTotalRM)} muted />
