@@ -131,7 +131,7 @@ export function InputsPanel({
       </div>
 
       <p className="mb-3 text-xs text-ink-secondary">
-        From each TNB bill (up to 3 months), key in the total amount (RM) and
+        From each electricity bill (up to 3 months), key in the total amount (RM) and
         the usage (kWh) printed on it. Labels are editable.
       </p>
       <div className="flex flex-col gap-3">

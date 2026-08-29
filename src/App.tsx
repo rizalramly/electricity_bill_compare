@@ -95,14 +95,14 @@ export default function App() {
         <div className="flex flex-wrap items-center gap-3">
           <span aria-hidden="true" className="text-3xl">⚡</span>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            TNB Tariff Comparison
+            Electricity Tariff Comparison
           </h1>
           <span className="rounded-full bg-series-new/10 px-3 py-1 text-xs font-semibold text-series-new ring-1 ring-series-new/30">
             RP4 · effective 1 July 2025
           </span>
         </div>
         <p className="mt-2 max-w-3xl text-sm text-ink-secondary">
-          Key in your actual monthly TNB bill (<strong>RM</strong>, as billed
+          Key in your actual monthly electricity bill (<strong>RM</strong>, as billed
           under the new <strong>RP4</strong> tariff) and the usage
           (<strong>kWh</strong>) shown on that bill — the calculator computes what
           the same usage would have cost under the{" "}
@@ -170,7 +170,7 @@ export default function App() {
             <div className="card flex h-full min-h-[200px] flex-col items-center justify-center gap-3 p-8 text-center">
               <p className="text-lg font-semibold">No months entered yet</p>
               <p className="max-w-sm text-sm text-ink-secondary">
-                Key in the bill amount (RM) and usage (kWh) from your TNB bill
+                Key in the bill amount (RM) and usage (kWh) from your electricity bill
                 for 1–3 months, or load the sample data to see the comparison
                 instantly.
               </p>
@@ -197,7 +197,11 @@ export default function App() {
           breakevens={breakevens}
           results={results}
           afaSen={curveAfaSen}
-          afaSource={afaFetched?.source === "mytnb" ? "auto-fetched from myTNB" : "default value"}
+          afaSource={
+            afaFetched?.source === "mytnb"
+              ? "auto-fetched from the official tariff page"
+              : "default value"
+          }
         />
 
         <div>
@@ -229,7 +233,7 @@ export default function App() {
             target="_blank"
             rel="noreferrer"
           >
-            myTNB
+            the official tariff page
           </a>{" "}
           for official figures. This tool is an unofficial estimate.
         </p>

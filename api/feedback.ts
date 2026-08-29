@@ -171,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const lines = [
-    "New feedback from the TNB Tariff Comparison app",
+    "New feedback from the Electricity Tariff Comparison app",
     "",
     `Name:  ${parsed.name || "(not given)"}`,
     `Email: ${parsed.email || "(not given)"}`,
@@ -188,10 +188,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "TNB Tariff Feedback <onboarding@resend.dev>",
+        from: "Electricity Tariff Feedback <onboarding@resend.dev>",
         to: [recipient()],
         reply_to: parsed.email || undefined,
-        subject: `TNB Tariff Comparison feedback${parsed.name ? ` — ${parsed.name}` : ""}`,
+        subject: `Electricity Tariff Comparison feedback${parsed.name ? ` — ${parsed.name}` : ""}`,
         text: lines.join("\n"),
         attachments: parsed.file
           ? [
